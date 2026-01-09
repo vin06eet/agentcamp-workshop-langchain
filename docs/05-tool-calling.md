@@ -46,6 +46,7 @@ User: "What's the weather in Tokyo?"
 ```bash
 mkdir -p phase-05
 cd phase-05
+touch app.py tools.py
 ```
 
 ---
@@ -215,7 +216,8 @@ Now we'll modify it to use tools.
 At the top of `app.py`, add:
 
 ```python
-from langchain_core.messages import AIMessageChunk, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk
+from langchain_core.messages.tool import ToolMessage
 from tools import TOOLS
 ```
 
@@ -271,35 +273,45 @@ Replace the `main()` function to handle both text AND tool calls:
 async def main(message: cl.Message):
     agent = cl.user_session.get("agent")
     chat_history = cl.user_session.get("chat_history")
-    
+
     chat_history.append({"role": "user", "content": message.content})
-    
+
     msg = cl.Message(content="")
     full_response = ""
+    steps = {}  # Track tool call steps
 
     # Use BOTH "messages" and "updates" stream modes
-    async for data, kind in agent.astream(
-        {"messages": chat_history}, 
-        stream_mode=["messages", "updates"]  # Changed!
+    async for stream_mode, data in agent.astream(
+        {"messages": chat_history},
+        stream_mode=["messages", "updates"]
     ):
-        # Handle text streaming
-        if kind == "messages":
-            if isinstance(data, AIMessageChunk):
-                chunks = data.content_blocks
-                if len(chunks) > 0:
-                    chunk = chunks[-1]["text"]
-                    full_response += chunk
-                    await msg.stream_token(chunk)
-        
-        # Handle tool calls
-        elif kind == "updates":
-            for key, value in data.items():
-                if "messages" in key and isinstance(value, list):
-                    for tool_msg in value:
-                        if isinstance(tool_msg, ToolMessage):
-                            # Show tool result in UI
-                            async with cl.Step(name=tool_msg.name) as step:
-                                step.output = tool_msg.content
+        # Handle tool calls and results
+        if stream_mode == "updates":
+            for source, update in data.items():
+                if source in ("model", "tools"):
+                    last_msg = update["messages"][-1]
+
+                    # Show tool being called
+                    if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
+                        for tool_call in last_msg.tool_calls:
+                            step = cl.Step(f"🔧 {tool_call['name']}", type="tool")
+                            step.input = tool_call["args"]
+                            await step.send()
+                            steps[tool_call["id"]] = step
+
+                    # Show tool result
+                    if isinstance(last_msg, ToolMessage):
+                        step = steps.get(last_msg.tool_call_id)
+                        if step:
+                            step.output = last_msg.content
+                            await step.update()
+
+        # Handle streaming text
+        if stream_mode == "messages":
+            token, _ = data
+            if isinstance(token, AIMessageChunk):
+                full_response += token.content
+                await msg.stream_token(token.content)
 
     await msg.send()
 
@@ -312,7 +324,7 @@ async def main(message: cl.Message):
 |---------|---------|
 | `stream_mode="messages"` | `stream_mode=["messages", "updates"]` |
 | Only text | Text + tool calls |
-| No `cl.Step` | Show tool results in collapsible step |
+| No `cl.Step` | Show tool calls and results in collapsible steps |
 
 ---
 
@@ -325,7 +337,8 @@ import chainlit as cl
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessageChunk, ToolMessage
+from langchain_core.messages import AIMessage, AIMessageChunk
+from langchain_core.messages.tool import ToolMessage
 
 from tools import TOOLS
 
@@ -343,64 +356,78 @@ For other questions, answer from your knowledge.
 Current date: {date.today().strftime("%B %d, %Y")}
 """
 
+
 def get_llm():
     return ChatOpenAI(
         model="openai/gpt-4.1-nano",
         api_key=os.getenv("GITHUB_TOKEN"),
         base_url="https://models.github.ai/inference",
+        temperature=0.7,
     )
+
 
 def create_assistant_agent():
     llm = get_llm()
-    
+
     agent = create_agent(
         model=llm,
         tools=TOOLS,
         system_prompt=SYSTEM_PROMPT,
     )
-    
+
     return agent
+
 
 @cl.on_chat_start
 async def start():
     agent = create_assistant_agent()
-    
+
     cl.user_session.set("agent", agent)
     cl.user_session.set("chat_history", [])
-    
+
     await cl.Message(
         content="👋 Hi! I'm Aria. I can check the weather for you! Try: 'What's the weather in Paris?'"
     ).send()
+
 
 @cl.on_message
 async def main(message: cl.Message):
     agent = cl.user_session.get("agent")
     chat_history = cl.user_session.get("chat_history")
-    
+
     chat_history.append({"role": "user", "content": message.content})
-    
+
     msg = cl.Message(content="")
     full_response = ""
+    steps = {}
 
-    async for data, kind in agent.astream(
-        {"messages": chat_history}, 
+    async for stream_mode, data in agent.astream(
+        {"messages": chat_history},
         stream_mode=["messages", "updates"]
     ):
-        if kind == "messages":
-            if isinstance(data, AIMessageChunk):
-                chunks = data.content_blocks
-                if len(chunks) > 0:
-                    chunk = chunks[-1]["text"]
-                    full_response += chunk
-                    await msg.stream_token(chunk)
-        
-        elif kind == "updates":
-            for key, value in data.items():
-                if "messages" in key and isinstance(value, list):
-                    for tool_msg in value:
-                        if isinstance(tool_msg, ToolMessage):
-                            async with cl.Step(name=tool_msg.name) as step:
-                                step.output = tool_msg.content
+        if stream_mode == "updates":
+            for source, update in data.items():
+                if source in ("model", "tools"):
+                    last_msg = update["messages"][-1]
+
+                    if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
+                        for tool_call in last_msg.tool_calls:
+                            step = cl.Step(f"🔧 {tool_call['name']}", type="tool")
+                            step.input = tool_call["args"]
+                            await step.send()
+                            steps[tool_call["id"]] = step
+
+                    if isinstance(last_msg, ToolMessage):
+                        step = steps.get(last_msg.tool_call_id)
+                        if step:
+                            step.output = last_msg.content
+                            await step.update()
+
+        if stream_mode == "messages":
+            token, _ = data
+            if isinstance(token, AIMessageChunk):
+                full_response += token.content
+                await msg.stream_token(token.content)
 
     await msg.send()
 
@@ -410,15 +437,7 @@ async def main(message: cl.Message):
 
 ---
 
-## 📄 Step 11: Copy Chainlit Markdown
-
-```bash
-cp ../phase-04/chainlit.md .
-```
-
----
-
-## ▶️ Step 12: Run and Test
+## ▶️ Step 11: Run and Test
 
 ```bash
 chainlit run app.py -w
@@ -454,8 +473,7 @@ Aria: Tokyo is 8°C while Sydney is 22°C...
 ```
 phase-05/
 ├── app.py          # Agent with tools
-├── tools.py        # Tool definitions
-└── chainlit.md     # Welcome page
+└── tools.py        # Tool definitions
 ```
 
 ---
@@ -502,8 +520,12 @@ Add it to your `.env` file and restart Chainlit.
 - Make sure system prompt mentions the tool
 - Try asking more directly: "Use the weather tool for Paris"
 
-### "ToolMessage" not defined
-Add import: `from langchain_core.messages import AIMessageChunk, ToolMessage`
+### "ToolMessage" or "AIMessage" not defined
+Add imports:
+```python
+from langchain_core.messages import AIMessage, AIMessageChunk
+from langchain_core.messages.tool import ToolMessage
+```
 
 ### Tool step not showing in UI
 Make sure you're using `stream_mode=["messages", "updates"]` (with the list!)

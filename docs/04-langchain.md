@@ -44,6 +44,7 @@ An **agent** is an AI that can:
 ```bash
 mkdir -p phase-04
 cd phase-04
+touch app.py
 ```
 
 ---
@@ -219,6 +220,7 @@ def get_llm():
         model="openai/gpt-4.1-nano",
         api_key=os.getenv("GITHUB_TOKEN"),
         base_url="https://models.github.ai/inference",
+        temperature=0.7,
     )
 
 def create_assistant_agent():
@@ -239,7 +241,7 @@ async def start():
     cl.user_session.set("agent", agent)
     cl.user_session.set("chat_history", [])
     
-    await cl.Message(content="�� Hi! I'm Aria. How can I help?").send()
+    await cl.Message(content="👋 Hi! I'm Aria. How can I help?").send()
 
 @cl.on_message
 async def main(message: cl.Message):
@@ -269,15 +271,7 @@ async def main(message: cl.Message):
 
 ---
 
-## 📄 Step 8: Copy the Chainlit Markdown
-
-```bash
-cp ../phase-03/chainlit.md .
-```
-
----
-
-## ▶️ Step 9: Run and Test
+## ▶️ Step 8: Run and Test
 
 ```bash
 chainlit run app.py -w
@@ -310,8 +304,7 @@ The agent architecture gives us:
 
 ```
 phase-04/
-├── app.py          # Agent-based chat
-└── chainlit.md     # Welcome page
+└── app.py          # Agent-based chat
 ```
 
 ---

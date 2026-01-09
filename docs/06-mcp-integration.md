@@ -27,25 +27,26 @@ Each AI app defines its own tools locally.
 Tools are provided by external **MCP servers** that any AI app can connect to.
 
 ```
-┌──────────────────────────────────────────────┐
-│          Your Agent                           │
-│                                               │
-│   ┌─────────────┐    ┌──────────────┐        │
-│   │ Local Tools │    │  MCP Client  │        │
-│   │ (get_weather)│    │              │        │
-│   └─────────────┘    └──────┬───────┘        │
-└──────────────────────────────┼────────────────┘
-                               │
-                    ┌──────────▼───────────┐
-                    │   MCP Protocol       │
-                    └──────────┬───────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-      ┌───────▼──────┐ ┌───────▼──────┐ ┌───────▼──────┐
-      │ LangChain    │ │ Database     │ │ Your Own     │
-      │ Docs Server  │ │ Server       │ │ MCP Server   │
-      └──────────────┘ └──────────────┘ └──────────────┘
+┌─────────────────────────────────────────────────┐
+│                  Your Agent                     │
+│                                                 │
+│   ┌───────────────┐      ┌───────────────┐      │
+│   │  Local Tools  │      │  MCP Client   │      │
+│   │ (get_weather) │      │               │      │
+│   └───────────────┘      └───────┬───────┘      │
+│                                  │              │
+└──────────────────────────────────┼──────────────┘
+                                   │
+                        ┌──────────▼──────────┐
+                        │    MCP Protocol     │
+                        └──────────┬──────────┘
+                                   │
+            ┌──────────────────────┼──────────────────────┐
+            │                      │                      │
+   ┌────────▼────────┐   ┌────────▼────────┐   ┌────────▼────────┐
+   │   LangChain     │   │    Database     │   │    Your Own     │
+   │   Docs Server   │   │     Server      │   │   MCP Server    │
+   └─────────────────┘   └─────────────────┘   └─────────────────┘
 ```
 
 ### Why MCP?
@@ -81,7 +82,6 @@ Start with Phase 5's working code:
 ```bash
 cp ../phase-05/app.py .
 cp ../phase-05/tools.py .
-cp ../phase-05/chainlit.md .
 ```
 
 ---
@@ -292,6 +292,7 @@ def get_llm():
         model="openai/gpt-4.1-nano",
         api_key=os.getenv("GITHUB_TOKEN"),
         base_url="https://models.github.ai/inference",
+        temperature=0.7,
     )
 
 async def get_mcp_tools():
@@ -411,8 +412,7 @@ Aria: In Paris it's 12°C. For tools, you...
 ```
 phase-06/
 ├── app.py          # Agent with local + MCP tools
-├── tools.py        # Local tool definitions
-└── chainlit.md     # Welcome page
+└── tools.py        # Local tool definitions
 ```
 
 ---

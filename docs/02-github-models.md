@@ -147,9 +147,10 @@ Create a file called `test_github_models.py` in a new `phase-02` folder:
 ```bash
 mkdir -p phase-02
 cd phase-02
+touch test_github_models.py
 ```
 
-Now create the test file:
+Now open `test_github_models.py` and add this code:
 
 ```python
 """

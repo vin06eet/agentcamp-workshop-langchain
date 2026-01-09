@@ -74,6 +74,8 @@ When you created the virtual environment:
 
 **You'll know it's active when you see `(.venv)` at the start of your terminal prompt.**
 
+> 💡 **Tip:** To exit the virtual environment later, simply run `deactivate`.
+
 ---
 
 ## 📦 Step 3: Create Requirements File

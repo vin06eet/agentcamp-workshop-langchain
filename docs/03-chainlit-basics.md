@@ -21,6 +21,7 @@ By the end of this phase, you will:
 ```bash
 mkdir -p phase-03
 cd phase-03
+touch app.py
 ```
 
 ---
@@ -194,25 +195,6 @@ def get_llm():
 
 ---
 
-## 📄 Step 6: Add the Welcome Page
-
-Chainlit shows a welcome page from `chainlit.md`. Create it:
-
-```markdown
-# Welcome to Aria! 👋
-
-I'm your AI assistant powered by GitHub Models.
-
-## Try asking me:
-- "What is machine learning?"
-- "Write a Python function to reverse a string"
-- "Explain APIs in simple terms"
-```
-
-Refresh the page - you'll see the welcome message!
-
----
-
 ## 📋 Your Final Code
 
 Here's what your complete `app.py` should look like:
@@ -234,6 +216,7 @@ def get_llm():
         model="openai/gpt-4.1-nano",
         api_key=os.getenv("GITHUB_TOKEN"),
         base_url="https://models.github.ai/inference",
+        temperature=0.7,
         streaming=True,
     )
 
@@ -269,8 +252,7 @@ async def main(message: cl.Message):
 
 ```
 phase-03/
-├── app.py          # Chat application
-└── chainlit.md     # Welcome page
+└── app.py          # Chat application
 ```
 
 ---
