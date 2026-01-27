@@ -63,6 +63,15 @@ Or go directly to: [github.com/settings/tokens](https://github.com/settings/toke
 
 ### Create a New Token
 
+You can choose between **Fine-grained** or **Classic** tokens. For GitHub Models, either works, but the Classic token is simpler for this workshop,  but finegrained tokens are more secure for production use.
+
+#### Fine-grained Token
+
+Please follow the steps mentioned in the [AI Agent for Beginners setup](https://github.com/microsoft/ai-agents-for-beginners/blob/main/00-course-setup/README.md#set-up-for-samples-using-github-models).
+
+
+#### Classic
+
 1. Click **"Generate new token"** → **"Generate new token (classic)"**
 
 2. Fill in the form:
